@@ -1,0 +1,29 @@
+{
+  "id": "trekichiki",
+  "name": "Famichiki Counter",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "fbnlrz",
+  "description": "Tally every Famichiki you eat on your trip — FamilyMart Japan's legendary fried-chicken snack, counted right on your dashboard.",
+  "homepage": "https://github.com/fbnlrz/trekichiki",
+  "license": "MIT",
+  "icon": "Drumstick",
+  "type": "widget",
+  "trek": ">=3.2.0 <4.0.0",
+  "nativeModules": false,
+  "permissions": [
+    "db:own"
+  ],
+  "routes": [
+    { "method": "GET", "path": "/state", "auth": true },
+    { "method": "POST", "path": "/eat", "auth": true },
+    { "method": "POST", "path": "/reset", "auth": true }
+  ],
+  "capabilities": {
+    "widget": {
+      "title": "Famichiki",
+      "slot": "sidebar",
+      "defaultSize": "medium"
+    }
+  }
+}
