@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Famichiki Counter</title>
+<style>
+  /* TREK design tokens (client/src/index.css). The sandboxed iframe can't load
+     TREK's stylesheet, so the card mirrors its light + dark tokens 1:1 and
+     switches on the theme delivered via trek:context. */
+  :root {
+    --bg-card: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+    --text-faint: #9ca3af;
+    --border-faint: rgba(0, 0, 0, 0.06);
+    --border-primary: #e5e7eb;
+    --bg-hover: rgba(0, 0, 0, 0.03);
+    --accent: #111827;
+    --accent-text: #ffffff;
+    --accent-hover: #1f2937;
+    --danger: #dc2626;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --radius-lg: 16px;
+    --font-system: 'Poppins', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+      'Segoe UI', system-ui, sans-serif;
+  }
+  /* Dark tokens: applied explicitly by TREK's theme, and as the pre-context default. */
+  body[data-theme="dark"], body.dark {
+    --bg-card: #131316;
+    --text-primary: #f4f4f5;
+    --text-secondary: #d4d4d8;
+    --text-muted: #a1a1aa;
+    --text-faint: #71717a;
+    --border-faint: rgba(255, 255, 255, 0.07);
+    --border-primary: #27272a;
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --accent: #e4e4e7;
+    --accent-text: #09090b;
+    --accent-hover: #d4d4d8;
+    --danger: #ef4444;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  @media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]):not([data-theme="dark"]) {
+      --bg-card: #131316; --text-primary: #f4f4f5; --text-secondary: #d4d4d8;
+      --text-muted: #a1a1aa; --text-faint: #71717a; --border-faint: rgba(255, 255, 255, 0.07);
+      --border-primary: #27272a; --bg-hover: rgba(255, 255, 255, 0.06);
+      --accent: #e4e4e7; --accent-text: #09090b; --accent-hover: #d4d4d8; --danger: #ef4444;
+      --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--font-system);
+    color: var(--text-primary);
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+  /* FamilyMart signboard stripe — the one splash of brand on a native TREK card. */
+  .stripe {
+    height: 5px;
+    background: linear-gradient(90deg, #00a040 0 50%, #0068b7 50% 100%);
+  }
+  .body { padding: 20px; }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .info { min-width: 0; padding-top: 2px; }
+  .kicker {
+    font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 12px;
+  }
+  .count {
+    font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
+    color: var(--text-primary); font-variant-numeric: tabular-nums;
+  }
+  .art {
+    flex: none; width: 100px; margin: -4px -2px 0 0; align-self: center;
+    transform-origin: 50% 86%;
+  }
+  .art svg { display: block; width: 100%; height: auto; }
+  .art.pop { animation: shake .6s ease-in-out; }
+  @keyframes shake {
+    0%   { transform: scale(1) rotate(0); }
+    12%  { transform: scale(1.08) rotate(-9deg); }
+    28%  { transform: scale(1.06) rotate(7deg); }
+    44%  { transform: scale(1.04) rotate(-6deg); }
+    60%  { transform: scale(1.02) rotate(4deg); }
+    76%  { transform: scale(1.01) rotate(-2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .sub { font-size: 12.5px; color: var(--text-faint); margin: 9px 0 16px; min-height: 17px; }
+  .sub b { color: var(--text-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .eat {
+    width: 100%; border: 1px solid transparent; cursor: pointer;
+    background: var(--accent); color: var(--accent-text);
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    padding: 11px 14px; border-radius: 12px;
+    transition: background .15s ease, transform .06s ease;
+  }
+  .eat:hover { background: var(--accent-hover); }
+  .eat:active { transform: translateY(1px); }
+  .eat:disabled { opacity: .55; cursor: default; }
+  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+  .last { font-size: 11px; color: var(--text-faint); }
+  .reset {
+    background: none; border: 0; padding: 3px 6px; margin: -3px -6px; cursor: pointer;
+    font-family: inherit; font-size: 11px; color: var(--text-faint); border-radius: 6px;
+    transition: background .12s ease, color .12s ease;
+  }
+  .reset:hover { color: var(--text-secondary); background: var(--bg-hover); }
+  .reset.armed { color: var(--danger); font-weight: 600; }
+  .error { color: var(--danger); font-size: 12px; margin-top: 10px; }
+  .error:empty { margin: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .art.pop { animation: none; }
+    .eat, .reset { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="stripe"></div>
+    <div class="body">
+      <div class="top">
+        <div class="info">
+          <div class="kicker" id="kicker">Famichiki eaten</div>
+          <div class="count" id="count">0</div>
+          <div class="sub" id="sub">Loading counter …</div>
+        </div>
+        <div class="art" id="art" aria-hidden="true">
+          <svg viewBox="0 0 112 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Famichiki">
+            <defs>
+              <linearGradient id="fmChk" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#F8CE6A"/>
+                <stop offset=".55" stop-color="#EDA63C"/>
+                <stop offset="1" stop-color="#D9822A"/>
+              </linearGradient>
+              <clipPath id="fmBox"><rect x="17" y="75" width="78" height="45" rx="4"/></clipPath>
+            </defs>
+            <ellipse cx="56" cy="123" rx="34" ry="4.5" fill="#000" opacity=".10"/>
+            <path d="M33,88 C25,85 22,73 29,67 C21,63 23,50 33,51 C29,40 42,33 49,42 C51,27 66,27 70,42
+                     C79,34 92,42 84,54 C92,59 87,72 78,68 C82,77 73,83 66,78 L70,88 Z"
+                  fill="url(#fmChk)" stroke="#3f2a12" stroke-width="3" stroke-linejoin="round"/>
+            <g fill="#D07C22" opacity=".45">
+              <path d="M33,66 q6,-5 12,-2 q-3,7 -11,6 q-3,-2 -1,-4 z"/>
+              <path d="M70,50 q7,-3 11,3 q-4,6 -11,3 q-2,-3 0,-6 z"/>
+              <ellipse cx="42" cy="47" rx="4" ry="3"/><ellipse cx="76" cy="62" rx="4.5" ry="3.2"/>
+            </g>
+            <g fill="#8a4f12" opacity=".5">
+              <ellipse cx="38" cy="58" rx="1.5" ry="1.3"/><ellipse cx="50" cy="50" rx="1.4" ry="1.2"/>
+              <ellipse cx="63" cy="52" rx="1.5" ry="1.3"/><ellipse cx="72" cy="46" rx="1.3" ry="1.1"/>
+              <ellipse cx="45" cy="66" rx="1.4" ry="1.2"/><ellipse cx="70" cy="66" rx="1.3" ry="1.1"/>
+            </g>
+            <g fill="#FCE6AE" opacity=".7">
+              <ellipse cx="44" cy="40" rx="1.6" ry="1.2"/><ellipse cx="58" cy="35" rx="1.5" ry="1.1"/>
+              <ellipse cx="68" cy="40" rx="1.5" ry="1.1"/>
+            </g>
+            <ellipse cx="48" cy="60" rx="2.4" ry="3" fill="#3f2a12"/>
+            <ellipse cx="66" cy="60" rx="2.4" ry="3" fill="#3f2a12"/>
+            <circle cx="48.9" cy="59" r=".8" fill="#fff"/><circle cx="66.9" cy="59" r=".8" fill="#fff"/>
+            <path d="M52,66 Q57,71 62,66" fill="none" stroke="#3f2a12" stroke-width="2.2" stroke-linecap="round"/>
+            <g clip-path="url(#fmBox)">
+              <rect x="17" y="75" width="78" height="45" fill="#FFFDF5"/>
+              <g fill="#F7E49B">
+                <rect x="22" y="75" width="7" height="45"/><rect x="37" y="75" width="7" height="45"/>
+                <rect x="52" y="75" width="7" height="45"/><rect x="67" y="75" width="7" height="45"/>
+                <rect x="82" y="75" width="7" height="45"/>
+              </g>
+            </g>
+            <rect x="17" y="75" width="78" height="45" rx="4" fill="none" stroke="#3a352c" stroke-width="3"/>
+            <path d="M56,84 L47,79 L47,89 Z M56,84 L65,79 L65,89 Z" fill="#E0342A"/>
+            <rect x="53.4" y="81.4" width="5.2" height="5.2" rx="1.4" fill="#E0342A"/>
+            <text x="22" y="106" font-family="Georgia, serif" font-size="6.5" fill="#E0342A">★</text>
+            <text x="90" y="106" font-family="Georgia, serif" font-size="6.5" fill="#E0342A" text-anchor="end">★</text>
+            <text x="56" y="108" text-anchor="middle" transform="rotate(-4 56 105)"
+                  font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="700"
+                  font-size="12.5" fill="#E0342A" letter-spacing="-.3">Famichiki</text>
+          </svg>
+        </div>
+      </div>
+      <button class="eat" id="eat" disabled>+1 Famichiki</button>
+      <div class="footer">
+        <span class="last" id="last"></span>
+        <button class="reset" id="reset" hidden>reset</button>
+      </div>
+      <div class="error" id="error"></div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  var el = function (id) { return document.getElementById(id); };
+  var pending = {};      // requestId -> { resolve, reject }
+  var seq = 0;
+
+  // ---- localization (follows trek:context locale; English default) ----------
+  var STR = {
+    en: {
+      kicker: 'Famichiki eaten',
+      loading: 'Loading counter …',
+      today: function (n) { return '<b>' + n + '</b> today'; },
+      none: 'None yet today — grab one at FamilyMart!',
+      eat: '+1 Famichiki',
+      reset: 'reset',
+      resetArm: 'sure? tap again',
+      resetDone: 'Famichiki counter reset.',
+      eatDone: function (n) { return 'Famichiki #' + n + ' logged!'; },
+      error: 'Something went wrong.',
+      last: function (mins) {
+        if (mins < 1) return 'last one just now';
+        if (mins < 60) return 'last one ' + mins + ' min ago';
+        var h = Math.round(mins / 60);
+        if (h < 24) return 'last one ' + h + ' h ago';
+        var d = Math.round(h / 24);
+        return 'last one ' + d + ' day' + (d === 1 ? '' : 's') + ' ago';
+      },
+    },
+    de: {
+      kicker: 'Famichiki gegessen',
+      loading: 'Lade Zähler …',
+      today: function (n) { return '<b>' + n + '</b> heute'; },
+      none: 'Heute noch keine — ab zu FamilyMart!',
+      eat: '+1 Famichiki',
+      reset: 'zurücksetzen',
+      resetArm: 'wirklich? nochmal tippen',
+      resetDone: 'Famichiki-Zähler zurückgesetzt.',
+      eatDone: function (n) { return 'Famichiki Nr. ' + n + ' notiert!'; },
+      error: 'Etwas ist schiefgelaufen.',
+      last: function (mins) {
+        if (mins < 1) return 'zuletzt gerade eben';
+        if (mins < 60) return 'zuletzt vor ' + mins + ' Min';
+        var h = Math.round(mins / 60);
+        if (h < 24) return 'zuletzt vor ' + h + ' Std';
+        var d = Math.round(h / 24);
+        return 'zuletzt vor ' + d + ' Tag' + (d === 1 ? '' : 'en');
+      },
+    },
+  };
+  var L = STR.en;
+  var lastState = null;
+
+  function applyLang(locale) {
+    L = (locale && String(locale).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
+    document.documentElement.lang = (L === STR.de) ? 'de' : 'en';
+    el('kicker').textContent = L.kicker;
+    el('eat').textContent = L.eat;
+    if (!armed) el('reset').textContent = L.reset;
+    if (lastState) render(lastState); else el('sub').textContent = L.loading;
+  }
+
+  // ---- postMessage bridge ---------------------------------------------------
+  function post(msg) { window.parent.postMessage(msg, '*'); }
+
+  function invoke(sub, method, body) {
+    return new Promise(function (resolve, reject) {
+      var requestId = 'r' + (++seq);
+      pending[requestId] = { resolve: resolve, reject: reject };
+      post({ type: 'trek:invoke', requestId: requestId, sub: sub, method: method, body: body });
+    });
+  }
+
+  function notify(level, message) { post({ type: 'trek:notify', level: level, message: message }); }
+
+  function resize() {
+    var h = el('card').getBoundingClientRect().height;
+    post({ type: 'trek:resize', height: Math.ceil(h) + 2 });
+  }
+
+  window.addEventListener('message', function (e) {
+    var m = e.data;
+    if (!m || typeof m.type !== 'string') return;
+    if (m.type === 'trek:context') {
+      document.body.dataset.theme = m.theme === 'dark' ? 'dark' : 'light';
+      applyLang(m.locale);
+      resize();
+      return;
+    }
+    if (m.type === 'trek:response' && pending[m.requestId]) {
+      pending[m.requestId].resolve(m.data); delete pending[m.requestId]; return;
+    }
+    if (m.type === 'trek:error' && pending[m.requestId]) {
+      pending[m.requestId].reject(new Error(m.message || ('Error ' + m.code)));
+      delete pending[m.requestId]; return;
+    }
+  });
+
+  // ---- rendering ------------------------------------------------------------
+  function fmtLast(iso) {
+    if (!iso) return '';
+    var then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    return L.last(Math.round((Date.now() - then) / 60000));
+  }
+
+  function render(state, opts) {
+    lastState = state;
+    el('count').textContent = state.total;
+    el('sub').innerHTML = state.today > 0 ? L.today(state.today) : L.none;
+    el('last').textContent = fmtLast(state.lastEatenAt);
+    el('reset').hidden = state.total === 0;
+    el('error').textContent = '';
+    if (opts && opts.pop) {
+      var a = el('art');
+      a.classList.remove('pop'); void a.offsetWidth; a.classList.add('pop');
+    }
+    resize();
+  }
+
+  function showError(err) {
+    el('error').textContent = (err && err.message) ? err.message : L.error;
+    resize();
+  }
+
+  // ---- actions --------------------------------------------------------------
+  var eatBtn = el('eat');
+  eatBtn.addEventListener('click', function () {
+    eatBtn.disabled = true;
+    invoke('/eat', 'POST').then(function (state) {
+      render(state, { pop: true });
+      notify('success', L.eatDone(state.total));
+    }).catch(showError).then(function () { eatBtn.disabled = false; });
+  });
+
+  // Two-tap reset so a stray click doesn't wipe the tally.
+  var resetBtn = el('reset');
+  var armed = false, armTimer = null;
+  function disarm() { armed = false; resetBtn.textContent = L.reset; resetBtn.classList.remove('armed'); }
+  resetBtn.addEventListener('click', function () {
+    if (!armed) {
+      armed = true;
+      resetBtn.textContent = L.resetArm;
+      resetBtn.classList.add('armed');
+      armTimer = setTimeout(disarm, 2500);
+      return;
+    }
+    clearTimeout(armTimer); disarm();
+    invoke('/reset', 'POST').then(function (state) {
+      render(state); notify('info', L.resetDone);
+    }).catch(showError);
+  });
+
+  // ---- boot -----------------------------------------------------------------
+  post({ type: 'trek:ready' });           // TREK answers with trek:context
+  invoke('/state', 'GET').then(function (state) {
+    eatBtn.disabled = false; render(state);
+  }).catch(function (err) {
+    eatBtn.disabled = false; el('sub').textContent = ''; showError(err);
+  });
+})();
+</script>
+</body>
+</html>
