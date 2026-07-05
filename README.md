@@ -27,8 +27,9 @@ love and shows it off. Itadakimasu!
 ![The widget after a few Famichiki have been logged](./docs/screenshot.png)
 
 The card shows your all-time total, how many you've had today, and when the
-last one went down. Tap **+1 Famichiki** to add one; the count and the little
-🍗 react instantly.
+last one went down. Tap **+1 Famichiki** to add one; the count ticks up and the
+Famichiki mascot gives a happy shake. The mascot is a hand-built inline SVG —
+no raster image, so it renders crisply inside TREK's locked-down plugin sandbox.
 
 The widget follows TREK's own light and dark design tokens, so it sits natively
 next to your other dashboard cards, and its interface is localized — it shows in

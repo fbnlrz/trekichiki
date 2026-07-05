@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -20,9 +20,7 @@
     --accent: #111827;
     --accent-text: #ffffff;
     --accent-hover: #1f2937;
-    --accent-subtle: #f1f5f9;
     --danger: #dc2626;
-    --success: #16a34a;
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
     --radius-lg: 16px;
     --font-system: 'Poppins', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
@@ -41,9 +39,7 @@
     --accent: #e4e4e7;
     --accent-text: #09090b;
     --accent-hover: #d4d4d8;
-    --accent-subtle: rgba(255, 255, 255, 0.08);
     --danger: #ef4444;
-    --success: #22c55e;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
   @media (prefers-color-scheme: dark) {
@@ -51,8 +47,7 @@
       --bg-card: #131316; --text-primary: #f4f4f5; --text-secondary: #d4d4d8;
       --text-muted: #a1a1aa; --text-faint: #71717a; --border-faint: rgba(255, 255, 255, 0.07);
       --border-primary: #27272a; --bg-hover: rgba(255, 255, 255, 0.06);
-      --accent: #e4e4e7; --accent-text: #09090b; --accent-hover: #d4d4d8;
-      --accent-subtle: rgba(255, 255, 255, 0.08); --danger: #ef4444; --success: #22c55e;
+      --accent: #e4e4e7; --accent-text: #09090b; --accent-hover: #d4d4d8; --danger: #ef4444;
       --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
   }
@@ -78,29 +73,32 @@
     background: linear-gradient(90deg, #00a040 0 50%, #0068b7 50% 100%);
   }
   .body { padding: 20px; }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .info { min-width: 0; padding-top: 2px; }
   .kicker {
-    display: flex; align-items: center; gap: 7px;
     font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
-    color: var(--text-muted); margin-bottom: 14px;
+    color: var(--text-muted); margin-bottom: 12px;
   }
-  .kicker .dot { font-size: 13px; }
-  .count-row { display: flex; align-items: baseline; gap: 10px; }
   .count {
-    font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
+    font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
     color: var(--text-primary); font-variant-numeric: tabular-nums;
   }
-  .chick {
-    font-size: 26px; line-height: 1; user-select: none;
-    transform-origin: 50% 80%;
+  .art {
+    flex: none; width: 100px; margin: -4px -2px 0 0; align-self: center;
+    transform-origin: 50% 86%;
   }
-  .chick.pop { animation: pop .5s cubic-bezier(.2, 1.4, .35, 1); }
-  @keyframes pop {
-    0% { transform: scale(1) rotate(0); }
-    35% { transform: scale(1.3) rotate(-10deg); }
-    70% { transform: scale(.95) rotate(7deg); }
+  .art svg { display: block; width: 100%; height: auto; }
+  .art.pop { animation: shake .6s ease-in-out; }
+  @keyframes shake {
+    0%   { transform: scale(1) rotate(0); }
+    12%  { transform: scale(1.08) rotate(-9deg); }
+    28%  { transform: scale(1.06) rotate(7deg); }
+    44%  { transform: scale(1.04) rotate(-6deg); }
+    60%  { transform: scale(1.02) rotate(4deg); }
+    76%  { transform: scale(1.01) rotate(-2deg); }
     100% { transform: scale(1) rotate(0); }
   }
-  .sub { font-size: 12.5px; color: var(--text-faint); margin: 10px 0 16px; min-height: 17px; }
+  .sub { font-size: 12.5px; color: var(--text-faint); margin: 9px 0 16px; min-height: 17px; }
   .sub b { color: var(--text-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
   .eat {
     width: 100%; border: 1px solid transparent; cursor: pointer;
@@ -124,7 +122,7 @@
   .error { color: var(--danger); font-size: 12px; margin-top: 10px; }
   .error:empty { margin: 0; }
   @media (prefers-reduced-motion: reduce) {
-    .chick.pop { animation: none; }
+    .art.pop { animation: none; }
     .eat, .reset { transition: none; }
   }
 </style>
@@ -133,12 +131,63 @@
   <div class="card" id="card">
     <div class="stripe"></div>
     <div class="body">
-      <div class="kicker"><span class="dot" aria-hidden="true">🍗</span> Famichiki eaten</div>
-      <div class="count-row">
-        <span class="count" id="count">0</span>
-        <span class="chick" id="chick" aria-hidden="true">🍗</span>
+      <div class="top">
+        <div class="info">
+          <div class="kicker" id="kicker">Famichiki eaten</div>
+          <div class="count" id="count">0</div>
+          <div class="sub" id="sub">Loading counter …</div>
+        </div>
+        <div class="art" id="art" aria-hidden="true">
+          <svg viewBox="0 0 112 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Famichiki">
+            <defs>
+              <linearGradient id="fmChk" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#F8CE6A"/>
+                <stop offset=".55" stop-color="#EDA63C"/>
+                <stop offset="1" stop-color="#D9822A"/>
+              </linearGradient>
+              <clipPath id="fmBox"><rect x="17" y="75" width="78" height="45" rx="4"/></clipPath>
+            </defs>
+            <ellipse cx="56" cy="123" rx="34" ry="4.5" fill="#000" opacity=".10"/>
+            <path d="M33,88 C25,85 22,73 29,67 C21,63 23,50 33,51 C29,40 42,33 49,42 C51,27 66,27 70,42
+                     C79,34 92,42 84,54 C92,59 87,72 78,68 C82,77 73,83 66,78 L70,88 Z"
+                  fill="url(#fmChk)" stroke="#3f2a12" stroke-width="3" stroke-linejoin="round"/>
+            <g fill="#D07C22" opacity=".45">
+              <path d="M33,66 q6,-5 12,-2 q-3,7 -11,6 q-3,-2 -1,-4 z"/>
+              <path d="M70,50 q7,-3 11,3 q-4,6 -11,3 q-2,-3 0,-6 z"/>
+              <ellipse cx="42" cy="47" rx="4" ry="3"/><ellipse cx="76" cy="62" rx="4.5" ry="3.2"/>
+            </g>
+            <g fill="#8a4f12" opacity=".5">
+              <ellipse cx="38" cy="58" rx="1.5" ry="1.3"/><ellipse cx="50" cy="50" rx="1.4" ry="1.2"/>
+              <ellipse cx="63" cy="52" rx="1.5" ry="1.3"/><ellipse cx="72" cy="46" rx="1.3" ry="1.1"/>
+              <ellipse cx="45" cy="66" rx="1.4" ry="1.2"/><ellipse cx="70" cy="66" rx="1.3" ry="1.1"/>
+            </g>
+            <g fill="#FCE6AE" opacity=".7">
+              <ellipse cx="44" cy="40" rx="1.6" ry="1.2"/><ellipse cx="58" cy="35" rx="1.5" ry="1.1"/>
+              <ellipse cx="68" cy="40" rx="1.5" ry="1.1"/>
+            </g>
+            <ellipse cx="48" cy="60" rx="2.4" ry="3" fill="#3f2a12"/>
+            <ellipse cx="66" cy="60" rx="2.4" ry="3" fill="#3f2a12"/>
+            <circle cx="48.9" cy="59" r=".8" fill="#fff"/><circle cx="66.9" cy="59" r=".8" fill="#fff"/>
+            <path d="M52,66 Q57,71 62,66" fill="none" stroke="#3f2a12" stroke-width="2.2" stroke-linecap="round"/>
+            <g clip-path="url(#fmBox)">
+              <rect x="17" y="75" width="78" height="45" fill="#FFFDF5"/>
+              <g fill="#F7E49B">
+                <rect x="22" y="75" width="7" height="45"/><rect x="37" y="75" width="7" height="45"/>
+                <rect x="52" y="75" width="7" height="45"/><rect x="67" y="75" width="7" height="45"/>
+                <rect x="82" y="75" width="7" height="45"/>
+              </g>
+            </g>
+            <rect x="17" y="75" width="78" height="45" rx="4" fill="none" stroke="#3a352c" stroke-width="3"/>
+            <path d="M56,84 L47,79 L47,89 Z M56,84 L65,79 L65,89 Z" fill="#E0342A"/>
+            <rect x="53.4" y="81.4" width="5.2" height="5.2" rx="1.4" fill="#E0342A"/>
+            <text x="22" y="106" font-family="Georgia, serif" font-size="6.5" fill="#E0342A">★</text>
+            <text x="90" y="106" font-family="Georgia, serif" font-size="6.5" fill="#E0342A" text-anchor="end">★</text>
+            <text x="56" y="108" text-anchor="middle" transform="rotate(-4 56 105)"
+                  font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="700"
+                  font-size="12.5" fill="#E0342A" letter-spacing="-.3">Famichiki</text>
+          </svg>
+        </div>
       </div>
-      <div class="sub" id="sub">Loading counter …</div>
       <button class="eat" id="eat" disabled>+1 Famichiki</button>
       <div class="footer">
         <span class="last" id="last"></span>
@@ -162,12 +211,12 @@
       kicker: 'Famichiki eaten',
       loading: 'Loading counter …',
       today: function (n) { return '<b>' + n + '</b> today'; },
-      none: 'None yet today – off to FamilyMart! 🏪',
+      none: 'None yet today — grab one at FamilyMart!',
       eat: '+1 Famichiki',
       reset: 'reset',
       resetArm: 'sure? tap again',
       resetDone: 'Famichiki counter reset.',
-      eatDone: function (n) { return 'Famichiki #' + n + ' logged! 🍗'; },
+      eatDone: function (n) { return 'Famichiki #' + n + ' logged!'; },
       error: 'Something went wrong.',
       last: function (mins) {
         if (mins < 1) return 'last one just now';
@@ -182,12 +231,12 @@
       kicker: 'Famichiki gegessen',
       loading: 'Lade Zähler …',
       today: function (n) { return '<b>' + n + '</b> heute'; },
-      none: 'Heute noch keine – ab zu FamilyMart! 🏪',
+      none: 'Heute noch keine — ab zu FamilyMart!',
       eat: '+1 Famichiki',
       reset: 'zurücksetzen',
       resetArm: 'wirklich? nochmal tippen',
       resetDone: 'Famichiki-Zähler zurückgesetzt.',
-      eatDone: function (n) { return 'Famichiki Nr. ' + n + ' notiert! 🍗'; },
+      eatDone: function (n) { return 'Famichiki Nr. ' + n + ' notiert!'; },
       error: 'Etwas ist schiefgelaufen.',
       last: function (mins) {
         if (mins < 1) return 'zuletzt gerade eben';
@@ -205,10 +254,10 @@
   function applyLang(locale) {
     L = (locale && String(locale).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
     document.documentElement.lang = (L === STR.de) ? 'de' : 'en';
-    document.querySelector('.kicker').lastChild.textContent = ' ' + L.kicker;
-    if (!lastState) el('sub').textContent = L.loading;
-    if (!armed) resetBtn.textContent = L.reset;
-    if (lastState) render(lastState);
+    el('kicker').textContent = L.kicker;
+    el('eat').textContent = L.eat;
+    if (!armed) el('reset').textContent = L.reset;
+    if (lastState) render(lastState); else el('sub').textContent = L.loading;
   }
 
   // ---- postMessage bridge ---------------------------------------------------
@@ -222,9 +271,7 @@
     });
   }
 
-  function notify(level, message) {
-    post({ type: 'trek:notify', level: level, message: message });
-  }
+  function notify(level, message) { post({ type: 'trek:notify', level: level, message: message }); }
 
   function resize() {
     var h = el('card').getBoundingClientRect().height;
@@ -259,15 +306,14 @@
 
   function render(state, opts) {
     lastState = state;
-    el('eat').textContent = L.eat;
     el('count').textContent = state.total;
     el('sub').innerHTML = state.today > 0 ? L.today(state.today) : L.none;
     el('last').textContent = fmtLast(state.lastEatenAt);
     el('reset').hidden = state.total === 0;
     el('error').textContent = '';
     if (opts && opts.pop) {
-      var c = el('chick');
-      c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+      var a = el('art');
+      a.classList.remove('pop'); void a.offsetWidth; a.classList.add('pop');
     }
     resize();
   }
