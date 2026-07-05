@@ -24,7 +24,7 @@ love and shows it off. Itadakimasu!
 
 ## Screenshots
 
-![The widget after a few Famichiki have been logged](./docs/screenshot.png)
+![The Famichiki Counter widget in TREK's dark and light themes](./docs/widget.png)
 
 The card shows your all-time total, how many you've had today, and when the
 last one went down. Tap **+1 Famichiki** to add one; the count ticks up and the
