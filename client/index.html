@@ -133,16 +133,16 @@
   <div class="card" id="card">
     <div class="stripe"></div>
     <div class="body">
-      <div class="kicker"><span class="dot" aria-hidden="true">🍗</span> Famichiki gegessen</div>
+      <div class="kicker"><span class="dot" aria-hidden="true">🍗</span> Famichiki eaten</div>
       <div class="count-row">
         <span class="count" id="count">0</span>
         <span class="chick" id="chick" aria-hidden="true">🍗</span>
       </div>
-      <div class="sub" id="sub">Lade Zähler …</div>
+      <div class="sub" id="sub">Loading counter …</div>
       <button class="eat" id="eat" disabled>+1 Famichiki</button>
       <div class="footer">
         <span class="last" id="last"></span>
-        <button class="reset" id="reset" hidden>zurücksetzen</button>
+        <button class="reset" id="reset" hidden>reset</button>
       </div>
       <div class="error" id="error"></div>
     </div>
@@ -155,6 +155,61 @@
   var el = function (id) { return document.getElementById(id); };
   var pending = {};      // requestId -> { resolve, reject }
   var seq = 0;
+
+  // ---- localization (follows trek:context locale; English default) ----------
+  var STR = {
+    en: {
+      kicker: 'Famichiki eaten',
+      loading: 'Loading counter …',
+      today: function (n) { return '<b>' + n + '</b> today'; },
+      none: 'None yet today – off to FamilyMart! 🏪',
+      eat: '+1 Famichiki',
+      reset: 'reset',
+      resetArm: 'sure? tap again',
+      resetDone: 'Famichiki counter reset.',
+      eatDone: function (n) { return 'Famichiki #' + n + ' logged! 🍗'; },
+      error: 'Something went wrong.',
+      last: function (mins) {
+        if (mins < 1) return 'last one just now';
+        if (mins < 60) return 'last one ' + mins + ' min ago';
+        var h = Math.round(mins / 60);
+        if (h < 24) return 'last one ' + h + ' h ago';
+        var d = Math.round(h / 24);
+        return 'last one ' + d + ' day' + (d === 1 ? '' : 's') + ' ago';
+      },
+    },
+    de: {
+      kicker: 'Famichiki gegessen',
+      loading: 'Lade Zähler …',
+      today: function (n) { return '<b>' + n + '</b> heute'; },
+      none: 'Heute noch keine – ab zu FamilyMart! 🏪',
+      eat: '+1 Famichiki',
+      reset: 'zurücksetzen',
+      resetArm: 'wirklich? nochmal tippen',
+      resetDone: 'Famichiki-Zähler zurückgesetzt.',
+      eatDone: function (n) { return 'Famichiki Nr. ' + n + ' notiert! 🍗'; },
+      error: 'Etwas ist schiefgelaufen.',
+      last: function (mins) {
+        if (mins < 1) return 'zuletzt gerade eben';
+        if (mins < 60) return 'zuletzt vor ' + mins + ' Min';
+        var h = Math.round(mins / 60);
+        if (h < 24) return 'zuletzt vor ' + h + ' Std';
+        var d = Math.round(h / 24);
+        return 'zuletzt vor ' + d + ' Tag' + (d === 1 ? '' : 'en');
+      },
+    },
+  };
+  var L = STR.en;
+  var lastState = null;
+
+  function applyLang(locale) {
+    L = (locale && String(locale).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
+    document.documentElement.lang = (L === STR.de) ? 'de' : 'en';
+    document.querySelector('.kicker').lastChild.textContent = ' ' + L.kicker;
+    if (!lastState) el('sub').textContent = L.loading;
+    if (!armed) resetBtn.textContent = L.reset;
+    if (lastState) render(lastState);
+  }
 
   // ---- postMessage bridge ---------------------------------------------------
   function post(msg) { window.parent.postMessage(msg, '*'); }
@@ -181,6 +236,7 @@
     if (!m || typeof m.type !== 'string') return;
     if (m.type === 'trek:context') {
       document.body.dataset.theme = m.theme === 'dark' ? 'dark' : 'light';
+      applyLang(m.locale);
       resize();
       return;
     }
@@ -188,7 +244,7 @@
       pending[m.requestId].resolve(m.data); delete pending[m.requestId]; return;
     }
     if (m.type === 'trek:error' && pending[m.requestId]) {
-      pending[m.requestId].reject(new Error(m.message || ('Fehler ' + m.code)));
+      pending[m.requestId].reject(new Error(m.message || ('Error ' + m.code)));
       delete pending[m.requestId]; return;
     }
   });
@@ -198,20 +254,14 @@
     if (!iso) return '';
     var then = new Date(iso).getTime();
     if (isNaN(then)) return '';
-    var mins = Math.round((Date.now() - then) / 60000);
-    if (mins < 1) return 'zuletzt gerade eben';
-    if (mins < 60) return 'zuletzt vor ' + mins + ' Min';
-    var hrs = Math.round(mins / 60);
-    if (hrs < 24) return 'zuletzt vor ' + hrs + ' Std';
-    var days = Math.round(hrs / 24);
-    return 'zuletzt vor ' + days + ' Tag' + (days === 1 ? '' : 'en');
+    return L.last(Math.round((Date.now() - then) / 60000));
   }
 
   function render(state, opts) {
+    lastState = state;
+    el('eat').textContent = L.eat;
     el('count').textContent = state.total;
-    el('sub').innerHTML = state.today > 0
-      ? '<b>' + state.today + '</b> heute'
-      : 'Heute noch keine – ab zu FamilyMart! 🏪';
+    el('sub').innerHTML = state.today > 0 ? L.today(state.today) : L.none;
     el('last').textContent = fmtLast(state.lastEatenAt);
     el('reset').hidden = state.total === 0;
     el('error').textContent = '';
@@ -223,7 +273,7 @@
   }
 
   function showError(err) {
-    el('error').textContent = (err && err.message) ? err.message : 'Etwas ist schiefgelaufen.';
+    el('error').textContent = (err && err.message) ? err.message : L.error;
     resize();
   }
 
@@ -233,25 +283,25 @@
     eatBtn.disabled = true;
     invoke('/eat', 'POST').then(function (state) {
       render(state, { pop: true });
-      notify('success', 'Famichiki Nr. ' + state.total + ' notiert! 🍗');
+      notify('success', L.eatDone(state.total));
     }).catch(showError).then(function () { eatBtn.disabled = false; });
   });
 
   // Two-tap reset so a stray click doesn't wipe the tally.
   var resetBtn = el('reset');
   var armed = false, armTimer = null;
-  function disarm() { armed = false; resetBtn.textContent = 'zurücksetzen'; resetBtn.classList.remove('armed'); }
+  function disarm() { armed = false; resetBtn.textContent = L.reset; resetBtn.classList.remove('armed'); }
   resetBtn.addEventListener('click', function () {
     if (!armed) {
       armed = true;
-      resetBtn.textContent = 'wirklich? nochmal tippen';
+      resetBtn.textContent = L.resetArm;
       resetBtn.classList.add('armed');
       armTimer = setTimeout(disarm, 2500);
       return;
     }
     clearTimeout(armTimer); disarm();
     invoke('/reset', 'POST').then(function (state) {
-      render(state); notify('info', 'Famichiki-Zähler zurückgesetzt.');
+      render(state); notify('info', L.resetDone);
     }).catch(showError);
   });
 

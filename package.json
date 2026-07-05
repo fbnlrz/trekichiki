@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "npx -y trek-plugin-sdk dev",
     "validate": "npx -y trek-plugin-sdk validate .",
-    "pack": "npx -y trek-plugin-sdk pack ."
+    "pack": "npx -y trek-plugin-sdk pack .",
+    "release": "bash scripts/publish.sh"
   },
   "devDependencies": {
     "trek-plugin-sdk": "^1.2.1"

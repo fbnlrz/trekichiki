@@ -30,6 +30,11 @@ The card shows your all-time total, how many you've had today, and when the
 last one went down. Tap **+1 Famichiki** to add one; the count and the little
 🍗 react instantly.
 
+The widget follows TREK's own light and dark design tokens, so it sits natively
+next to your other dashboard cards, and its interface is localized — it shows in
+**English** by default and switches to **German** automatically when TREK runs
+in German (`de`).
+
 ## Permissions
 
 | Permission | Why it's needed |
@@ -43,6 +48,17 @@ There's nothing to configure. Install and activate the plugin from
 sidebar. Start tapping **+1 Famichiki** every time you grab one at
 FamilyMart — the counter does the rest. Use the small **reset** link (tap
 twice to confirm) to zero out the tally for a new trip.
+
+## Built with
+
+This plugin was built with [Claude Code](https://claude.com/claude-code), using
+the [`trek-plugin-dev`](https://github.com/fbnlrz/trek-plugin-skill) agent skill
+— an SKILL.md skill that teaches the TREK plugin model end to end: the
+`trek-plugin.json` manifest, the `definePlugin` server API, the sandboxed iframe
+`postMessage` bridge, and the TREK-Plugins registry publishing flow. TREK's real
+light/dark design tokens were sourced from
+[`mauriceboe/TREK`](https://github.com/mauriceboe/TREK) so the card matches the
+host UI exactly.
 
 ## License
 
