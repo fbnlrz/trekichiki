@@ -69,19 +69,19 @@
     height: 5px;
     background: linear-gradient(90deg, #00a040 0 50%, #0068b7 50% 100%);
   }
-  .body { padding: 16px 18px 22px; }
-  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .info { min-width: 0; padding-top: 2px; }
+  .body { padding: 13px 16px 14px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .info { min-width: 0; }
   .kicker {
     font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
-    color: var(--text-muted); margin-bottom: 12px;
+    color: var(--text-muted); margin-bottom: 7px;
   }
   .count {
-    font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
+    font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
     color: var(--text-primary); font-variant-numeric: tabular-nums;
   }
   .art {
-    flex: none; width: 100px; margin: -4px -2px 0 0; align-self: center;
+    flex: none; width: 76px; margin: 0 -2px 0 0; align-self: center;
     transform-origin: 50% 86%;
   }
   .art svg { display: block; width: 100%; height: auto; }
@@ -95,20 +95,19 @@
     76%  { transform: scale(1.01) rotate(-2deg); }
     100% { transform: scale(1) rotate(0); }
   }
-  .sub { font-size: 12.5px; color: var(--text-faint); margin: 9px 0 16px; min-height: 17px; }
+  .sub { font-size: 12.5px; color: var(--text-faint); margin: 6px 0 0; min-height: 16px; }
   .sub b { color: var(--text-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
   .eat {
     width: 100%; border: 1px solid transparent; cursor: pointer;
     background: var(--accent); color: var(--accent-text);
     font-family: inherit; font-size: 14px; font-weight: 600;
-    padding: 11px 14px; border-radius: 12px;
+    padding: 10px 14px; border-radius: 12px; margin-top: 12px;
     transition: background .15s ease, transform .06s ease;
   }
   .eat:hover { background: var(--accent-hover); }
   .eat:active { transform: translateY(1px); }
   .eat:disabled { opacity: .55; cursor: default; }
-  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-  .last { font-size: 11px; color: var(--text-faint); }
+  .footer { display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; min-height: 14px; }
   .reset {
     background: none; border: 0; padding: 3px 6px; margin: -3px -6px; cursor: pointer;
     font-family: inherit; font-size: 11px; color: var(--text-faint); border-radius: 6px;
@@ -187,7 +186,6 @@
       </div>
       <button class="eat" id="eat" disabled>+1 Famichiki</button>
       <div class="footer">
-        <span class="last" id="last"></span>
         <button class="reset" id="reset" hidden>reset</button>
       </div>
       <div class="error" id="error"></div>
@@ -208,7 +206,7 @@
       kicker: 'Famichiki eaten',
       loading: 'Loading counter …',
       today: function (n) { return '<b>' + n + '</b> today'; },
-      none: 'None yet today — grab one at FamilyMart!',
+      none: 'None yet today',
       eat: '+1 Famichiki',
       reset: 'reset',
       resetArm: 'sure? tap again',
@@ -228,7 +226,7 @@
       kicker: 'Famichiki gegessen',
       loading: 'Lade Zähler …',
       today: function (n) { return '<b>' + n + '</b> heute'; },
-      none: 'Heute noch keine — ab zu FamilyMart!',
+      none: 'Heute noch keine',
       eat: '+1 Famichiki',
       reset: 'zurücksetzen',
       resetArm: 'wirklich? nochmal tippen',
@@ -247,6 +245,27 @@
   };
   var L = STR.en;
   var lastState = null;
+
+  // ---- theme (robust: TREK may deliver theme under different keys, or — as in
+  // some 3.2.x builds — send locale but not theme; fall back to the OS scheme) --
+  var hostThemeExplicit = false;
+  function resolveTheme(m) {
+    var cands = [m.theme, m.colorScheme, m.color_scheme, m.appearance, m.mode];
+    for (var i = 0; i < cands.length; i++) {
+      var t = cands[i];
+      if (t === true) { hostThemeExplicit = true; return 'dark'; }
+      if (typeof t === 'string') {
+        t = t.trim().toLowerCase();
+        if (t === 'dark') { hostThemeExplicit = true; return 'dark'; }
+        if (t === 'light') { hostThemeExplicit = true; return 'light'; }
+        // 'system' / 'auto' → fall through to the OS preference
+      }
+    }
+    if (m.dark === true || m.darkMode === true) { hostThemeExplicit = true; return 'dark'; }
+    hostThemeExplicit = false;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  function applyTheme(t) { document.body.dataset.theme = (t === 'dark') ? 'dark' : 'light'; }
 
   function applyLang(locale) {
     L = (locale && String(locale).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
@@ -270,18 +289,24 @@
 
   function notify(level, message) { post({ type: 'trek:notify', level: level, message: message }); }
 
+  var lastH = -1;
   function resize() {
-    var h = el('card').getBoundingClientRect().height;
-    post({ type: 'trek:resize', height: Math.ceil(h) + 2 });
+    var h = Math.ceil(el('card').getBoundingClientRect().height) + 2;
+    if (h !== lastH) { lastH = h; post({ type: 'trek:resize', height: h }); }
   }
 
   window.addEventListener('message', function (e) {
     var m = e.data;
     if (!m || typeof m.type !== 'string') return;
     if (m.type === 'trek:context') {
-      document.body.dataset.theme = m.theme === 'dark' ? 'dark' : 'light';
+      applyTheme(resolveTheme(m));
       applyLang(m.locale);
       resize();
+      return;
+    }
+    // Some hosts push theme changes separately — honor them if they arrive.
+    if (m.type === 'trek:theme' || m.type === 'trek:themechange' || m.type === 'trek:theme-change') {
+      applyTheme(resolveTheme(m));
       return;
     }
     if (m.type === 'trek:response' && pending[m.requestId]) {
@@ -294,18 +319,10 @@
   });
 
   // ---- rendering ------------------------------------------------------------
-  function fmtLast(iso) {
-    if (!iso) return '';
-    var then = new Date(iso).getTime();
-    if (isNaN(then)) return '';
-    return L.last(Math.round((Date.now() - then) / 60000));
-  }
-
   function render(state, opts) {
     lastState = state;
     el('count').textContent = state.total;
     el('sub').innerHTML = state.today > 0 ? L.today(state.today) : L.none;
-    el('last').textContent = fmtLast(state.lastEatenAt);
     el('reset').hidden = state.total === 0;
     el('error').textContent = '';
     if (opts && opts.pop) {
@@ -349,6 +366,20 @@
   });
 
   // ---- boot -----------------------------------------------------------------
+  // Re-report height on ANY content/layout change (text wrap, state load, font
+  // metrics) so the host card never clips the button.
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { resize(); }).observe(el('card'));
+  }
+  // When we're following the OS scheme (host sent no explicit theme), react to
+  // the user flipping their OS/browser dark mode.
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var onScheme = function () { if (!hostThemeExplicit) applyTheme(resolveTheme({})); };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+
   post({ type: 'trek:ready' });           // TREK answers with trek:context
   invoke('/state', 'GET').then(function (state) {
     eatBtn.disabled = false; render(state);
