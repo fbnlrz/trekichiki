@@ -50,8 +50,16 @@ git push origin main
 From the repo root:
 
 ```bash
-npm run release              # convenience wrapper, see scripts/publish.sh
+npm run release              # cross-platform wrapper (node scripts/publish.mjs)
 ```
+
+> **Windows note:** `npm run release` uses a Node wrapper, so it works in
+> PowerShell/CMD. If you ever call the bash version directly and see
+> `set: pipefail: invalid option`, that's a CRLF line-ending issue — use
+> `npm run release` (Node) or the raw `npx trek-plugin-sdk publish …` command.
+> You still need **GitHub CLI** installed (`winget install --id GitHub.cli -e`)
+> and authenticated (`gh auth login`); a `spawnSync gh ENOENT` error means it
+> isn't on your PATH yet.
 
 or call the SDK directly:
 
