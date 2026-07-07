@@ -8,7 +8,14 @@
   /* TREK design tokens (client/src/index.css). The sandboxed iframe can't load
      TREK's stylesheet, so the card mirrors its light + dark tokens 1:1 and
      switches on the theme delivered via trek:context. */
-  :root {
+  /* Theme is set as data-theme on <html> (document.documentElement) — NOT <body> —
+     and coupled with color-scheme. Reason: the sandboxed iframe's canvas follows
+     the ROOT element's color-scheme. If it stays 'light', Chromium paints an opaque
+     WHITE canvas behind the transparent/flush widget → dark mode looks broken (light
+     card on a dark dashboard). Setting it on :root keeps the frame transparent over
+     TREK's card in both themes. TREK's own tokens (client/src/index.css) mirrored. */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
     --bg-card: #ffffff;
     --text-primary: #111827;
     --text-secondary: #374151;
@@ -26,8 +33,8 @@
     --font-system: 'Poppins', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
       'Segoe UI', system-ui, sans-serif;
   }
-  /* Dark tokens: applied explicitly by TREK's theme, and as the pre-context default. */
-  body[data-theme="dark"], body.dark {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg-card: #131316;
     --text-primary: #f4f4f5;
     --text-secondary: #d4d4d8;
@@ -42,8 +49,10 @@
     --danger: #ef4444;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
+  /* Pre-context default: follow the OS scheme until TREK pins an explicit theme. */
   @media (prefers-color-scheme: dark) {
-    body:not([data-theme="light"]):not([data-theme="dark"]) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+      color-scheme: dark;
       --bg-card: #131316; --text-primary: #f4f4f5; --text-secondary: #d4d4d8;
       --text-muted: #a1a1aa; --text-faint: #71717a; --border-faint: rgba(255, 255, 255, 0.07);
       --border-primary: #27272a; --bg-hover: rgba(255, 255, 255, 0.06);
@@ -249,6 +258,7 @@
   // ---- theme (robust: TREK may deliver theme under different keys, or — as in
   // some 3.2.x builds — send locale but not theme; fall back to the OS scheme) --
   var hostThemeExplicit = false;
+  var contextReceived = false;
   function resolveTheme(m) {
     var cands = [m.theme, m.colorScheme, m.color_scheme, m.appearance, m.mode];
     for (var i = 0; i < cands.length; i++) {
@@ -265,7 +275,23 @@
     hostThemeExplicit = false;
     return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   }
-  function applyTheme(t) { document.body.dataset.theme = (t === 'dark') ? 'dark' : 'light'; }
+  // Set on <html> (documentElement) — see the CSS note: color-scheme must live on
+  // the root or the sandbox canvas stays opaque-white behind the transparent widget.
+  function applyTheme(t) { document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light'; }
+
+  // TREK also sends `tokens` (the host's resolved palette) in trek:context. Applying
+  // them as inline vars on :root makes the widget match TREK EXACTLY (incl. accent)
+  // and re-match on toggle, since inline vars win over our hardcoded fallback.
+  function applyTokens(tokens) {
+    if (!tokens || typeof tokens !== 'object') return;
+    var root = document.documentElement.style;
+    for (var k in tokens) {
+      if (Object.prototype.hasOwnProperty.call(tokens, k) &&
+          k.indexOf('--') === 0 && typeof tokens[k] === 'string') {
+        root.setProperty(k, tokens[k]);
+      }
+    }
+  }
 
   function applyLang(locale) {
     L = (locale && String(locale).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
@@ -299,7 +325,9 @@
     var m = e.data;
     if (!m || typeof m.type !== 'string') return;
     if (m.type === 'trek:context') {
-      applyTheme(resolveTheme(m));
+      contextReceived = true;
+      applyTokens(m.tokens);            // exact TREK palette (incl. accent), if provided
+      applyTheme(resolveTheme(m));      // m.theme is the source of truth; sets <html> + color-scheme
       applyLang(m.locale);
       resize();
       return;
@@ -380,7 +408,18 @@
     else if (mq.addListener) mq.addListener(onScheme);
   }
 
-  post({ type: 'trek:ready' });           // TREK answers with trek:context
+  // Announce readiness, then re-request context a few times. TREK sends the context
+  // (incl. theme + tokens) on trek:ready OR trek:context:request, but the trek:ready
+  // handshake is racy: if we announce before the host's listener attaches, we'd never
+  // learn the theme and fall back to the OS scheme (dark mode looking "off"). Retrying
+  // trek:context:request until it arrives closes that race.
+  post({ type: 'trek:ready' });
+  (function requestContext(attempt) {
+    if (contextReceived || attempt > 6) return;
+    post({ type: 'trek:context:request' });
+    setTimeout(function () { requestContext(attempt + 1); }, 80 + attempt * 160);
+  })(0);
+
   invoke('/state', 'GET').then(function (state) {
     eatBtn.disabled = false; render(state);
   }).catch(function (err) {
