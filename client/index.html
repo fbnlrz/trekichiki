@@ -5,15 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Famichiki Counter</title>
 <style>
-  /* TREK design tokens (client/src/index.css). The sandboxed iframe can't load
-     TREK's stylesheet, so the card mirrors its light + dark tokens 1:1 and
-     switches on the theme delivered via trek:context. */
-  /* Theme is set as data-theme on <html> (document.documentElement) — NOT <body> —
-     and coupled with color-scheme. Reason: the sandboxed iframe's canvas follows
-     the ROOT element's color-scheme. If it stays 'light', Chromium paints an opaque
-     WHITE canvas behind the transparent/flush widget → dark mode looks broken (light
-     card on a dark dashboard). Setting it on :root keeps the frame transparent over
-     TREK's card in both themes. TREK's own tokens (client/src/index.css) mirrored. */
+  /* TREK design tokens (client/src/index.css). The sandboxed iframe can't load TREK's
+     stylesheet, so the card mirrors its light + dark tokens 1:1 and switches on the theme
+     delivered via trek:context. Live values arrive as `tokens` and win as inline vars.
+
+     Theme is set as data-theme on <html> (document.documentElement) — NOT <body> — and
+     coupled with color-scheme. The sandboxed iframe's canvas follows the ROOT element's
+     color-scheme; if it stays 'light', Chromium paints an opaque WHITE canvas behind the
+     transparent widget and dark mode looks broken. */
   :root, :root[data-theme="light"] {
     color-scheme: light;
     --bg-card: #ffffff;
@@ -27,11 +26,13 @@
     --accent: #111827;
     --accent-text: #ffffff;
     --accent-hover: #1f2937;
+    --success: #16a34a;
     --danger: #dc2626;
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
     --radius-lg: 16px;
     --font-system: 'Poppins', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
       'Segoe UI', system-ui, sans-serif;
+    --spark: rgba(0, 0, 0, 0.10);
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -46,8 +47,10 @@
     --accent: #e4e4e7;
     --accent-text: #09090b;
     --accent-hover: #d4d4d8;
+    --success: #22c55e;
     --danger: #ef4444;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --spark: rgba(255, 255, 255, 0.14);
   }
   /* Pre-context default: follow the OS scheme until TREK pins an explicit theme. */
   @media (prefers-color-scheme: dark) {
@@ -56,8 +59,10 @@
       --bg-card: #131316; --text-primary: #f4f4f5; --text-secondary: #d4d4d8;
       --text-muted: #a1a1aa; --text-faint: #71717a; --border-faint: rgba(255, 255, 255, 0.07);
       --border-primary: #27272a; --bg-hover: rgba(255, 255, 255, 0.06);
-      --accent: #e4e4e7; --accent-text: #09090b; --accent-hover: #d4d4d8; --danger: #ef4444;
+      --accent: #e4e4e7; --accent-text: #09090b; --accent-hover: #d4d4d8;
+      --success: #22c55e; --danger: #ef4444;
       --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --spark: rgba(255, 255, 255, 0.14);
     }
   }
 
@@ -69,28 +74,36 @@
     background: transparent;
     -webkit-font-smoothing: antialiased;
   }
-  /* No own card chrome — TREK already wraps the widget in its own titled card.
-     We render flush/transparent inside it so there's no card-in-card or
-     mismatched corners. */
+  /* No own card chrome — TREK already wraps the widget in its own titled card. We render
+     flush/transparent inside it so there's no card-in-card or mismatched corners. */
   .card { overflow: hidden; }
-  /* FamilyMart signboard stripe — full-bleed top accent (Maurice's request). */
+  /* FamilyMart signboard stripe — full-bleed top accent. */
   .stripe {
     height: 5px;
     background: linear-gradient(90deg, #00a040 0 50%, #0068b7 50% 100%);
   }
-  .body { padding: 13px 16px 14px; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .info { min-width: 0; }
+  .body { padding: 11px 16px 12px; }
+
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
   .kicker {
     font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
-    color: var(--text-muted); margin-bottom: 7px;
+    color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
   }
+  .streak {
+    flex: none; font-size: 11px; font-weight: 600; color: var(--success);
+    font-variant-numeric: tabular-nums;
+  }
+  .streak[hidden] { display: none; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .info { min-width: 0; }
   .count {
-    font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
+    font-size: 34px; font-weight: 700; line-height: 1.05; letter-spacing: -.02em;
     color: var(--text-primary); font-variant-numeric: tabular-nums;
   }
   .art {
-    flex: none; width: 76px; margin: 0 -2px 0 0; align-self: center;
+    flex: none; width: 72px; margin: 0 -2px 0 0; align-self: center;
     transform-origin: 50% 86%;
   }
   .art svg { display: block; width: 100%; height: auto; }
@@ -104,31 +117,66 @@
     76%  { transform: scale(1.01) rotate(-2deg); }
     100% { transform: scale(1) rotate(0); }
   }
-  .sub { font-size: 12.5px; color: var(--text-faint); margin: 6px 0 0; min-height: 16px; }
+
+  /* --text-muted, not --text-faint: faint is ~2.5:1 on white and fails WCAG AA at 12px. */
+  .sub {
+    font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0; min-height: 16px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .sub b { color: var(--text-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* Hitting the daily goal reads as a colour change rather than an extra clause — the
+     sidebar card is ~300px wide and every word competes for it. */
+  .sub b.met { color: var(--success); }
+
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 18px; margin: 9px 0 0; }
+  .spark[hidden] { display: none; }
+  .spark i {
+    flex: 1; background: var(--spark); border-radius: 2px; min-height: 2px;
+    transition: height .2s ease;
+  }
+  .spark i.on { background: var(--accent); opacity: .55; }
+  .spark i.today { opacity: 1; }
+
   .eat {
     width: 100%; border: 1px solid transparent; cursor: pointer;
     background: var(--accent); color: var(--accent-text);
     font-family: inherit; font-size: 14px; font-weight: 600;
-    padding: 10px 14px; border-radius: 12px; margin-top: 12px;
-    transition: background .15s ease, transform .06s ease;
+    padding: 9px 14px; border-radius: 12px; margin-top: 9px;
+    transition: background .15s ease, transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
   }
   .eat:hover { background: var(--accent-hover); }
-  .eat:active { transform: translateY(1px); }
+  .eat:active { transform: scale(0.97); transition-duration: 80ms; }
   .eat:disabled { opacity: .55; cursor: default; }
-  .footer { display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; min-height: 14px; }
-  .reset {
+
+  .footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 7px; min-height: 15px; gap: 8px;
+  }
+  .link {
     background: none; border: 0; padding: 3px 6px; margin: -3px -6px; cursor: pointer;
-    font-family: inherit; font-size: 11px; color: var(--text-faint); border-radius: 6px;
+    font-family: inherit; font-size: 11px; color: var(--text-muted); border-radius: 6px;
     transition: background .12s ease, color .12s ease;
   }
-  .reset:hover { color: var(--text-secondary); background: var(--bg-hover); }
-  .reset.armed { color: var(--danger); font-weight: 600; }
-  .error { color: var(--danger); font-size: 12px; margin-top: 10px; }
+  .link:hover { color: var(--text-secondary); background: var(--bg-hover); }
+  .link[hidden] { display: none; }
+
+  /* The UA default focus ring can be near-invisible against --accent in either theme. */
+  .eat:focus-visible, .link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .error { color: var(--danger); font-size: 12px; margin-top: 8px; }
   .error:empty { margin: 0; }
+
+  .sr {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .art.pop { animation: none; }
-    .eat, .reset { transition: none; }
+    .eat, .link, .spark i { transition: none; }
   }
 </style>
 </head>
@@ -136,14 +184,17 @@
   <div class="card" id="card">
     <div class="stripe"></div>
     <div class="body">
+      <div class="head">
+        <div class="kicker" id="kicker">Famichiki eaten</div>
+        <div class="streak" id="streak" hidden></div>
+      </div>
       <div class="top">
         <div class="info">
-          <div class="kicker" id="kicker">Famichiki eaten</div>
           <div class="count" id="count">0</div>
           <div class="sub" id="sub">Loading counter …</div>
         </div>
         <div class="art" id="art" aria-hidden="true">
-          <svg viewBox="0 0 112 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Famichiki">
+          <svg viewBox="0 0 112 130" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="fmChk" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0" stop-color="#F8CE6A"/>
@@ -193,11 +244,18 @@
           </svg>
         </div>
       </div>
+      <!-- Order is a priority list: the sources disagree on whether the sidebar slot is a
+           fixed ~180px overflow-hidden box or auto-height via trek:resize. If it does clip,
+           what gets cut has to be the history and the rarely used links — never the button
+           the whole widget exists for. -->
       <button class="eat" id="eat" disabled>+1 Famichiki</button>
+      <div class="spark" id="spark" hidden></div>
       <div class="footer">
-        <button class="reset" id="reset" hidden>reset</button>
+        <button class="link" id="undo" hidden>undo</button>
+        <button class="link" id="reset" hidden>reset</button>
       </div>
-      <div class="error" id="error"></div>
+      <div class="error" id="error" role="alert"></div>
+      <p class="sr" id="live" aria-live="polite"></p>
     </div>
   </div>
 
@@ -206,22 +264,53 @@
   'use strict';
 
   var el = function (id) { return document.getElementById(id); };
-  var pending = {};      // requestId -> { resolve, reject }
+  var pending = {};        // requestId -> { resolve, reject, timer }
+  var confirms = {};       // requestId -> resolve
   var seq = 0;
+  var renderedSeq = 0;     // guards against an older /state answer landing after a newer one
+  var lastState = null;
+  var timezone = null;
+  var locale = 'en';
+  var pollTimer = null;
+  var resetPending = false;  // a confirm dialog is open; ignore further reset taps
+  var spokenState = '';      // last text announced, so polling doesn't re-announce it
+
+  var INVOKE_TIMEOUT = 8000;
+  var POLL_MS = 60000;
 
   // ---- localization (follows trek:context locale; English default) ----------
   var STR = {
     en: {
       kicker: 'Famichiki eaten',
       loading: 'Loading counter …',
-      today: function (n) { return '<b>' + n + '</b> today'; },
-      none: 'None yet today',
       eat: '+1 Famichiki',
+      undo: 'undo',
       reset: 'reset',
-      resetArm: 'sure? tap again',
+      resetTitle: 'Reset the counter?',
+      resetMsg: 'This clears your whole Famichiki tally and cannot be undone.',
+      resetYes: 'Reset',
+      cancel: 'Cancel',
       resetDone: 'Famichiki counter reset.',
-      eatDone: function (n) { return 'Famichiki #' + n + ' logged!'; },
-      error: 'Something went wrong.',
+      undoDone: 'Took one back.',
+      eatDone: function (n) { return 'Famichiki number ' + n + ' logged.'; },
+      budgetFailed: 'Counted, but not booked to the trip budget — check the Costs addon and your budget rights.',
+      error: 'Something went wrong. Try again.',
+      offline: 'No answer from TREK. Try again.',
+      none: 'None yet today',
+      today: function (n, met) {
+        return '<b' + (met ? ' class="met"' : '') + '>' + n + '</b> today';
+      },
+      streak: function (n) { return n + ' day streak'; },
+      never: 'Nothing counted yet',
+      onTrip: function (n, title) { return n + ' of them on ' + title; },
+      live: function (s) {
+        var t = s.total + ' Famichiki in total, ' + s.today + ' today.';
+        if (s.goal && s.today >= s.goal) t += ' Daily goal reached.';
+        if (s.trip && s.trip.title && s.trip.count > 0) {
+          t += ' ' + s.trip.count + ' on ' + s.trip.title + '.';
+        }
+        return t;
+      },
       last: function (mins) {
         if (mins < 1) return 'last one just now';
         if (mins < 60) return 'last one ' + mins + ' min ago';
@@ -234,14 +323,34 @@
     de: {
       kicker: 'Famichiki gegessen',
       loading: 'Lade Zähler …',
-      today: function (n) { return '<b>' + n + '</b> heute'; },
-      none: 'Heute noch keine',
       eat: '+1 Famichiki',
+      undo: 'zurück',
       reset: 'zurücksetzen',
-      resetArm: 'wirklich? nochmal tippen',
+      resetTitle: 'Zähler zurücksetzen?',
+      resetMsg: 'Das löscht deinen kompletten Famichiki-Stand und lässt sich nicht rückgängig machen.',
+      resetYes: 'Zurücksetzen',
+      cancel: 'Abbrechen',
       resetDone: 'Famichiki-Zähler zurückgesetzt.',
-      eatDone: function (n) { return 'Famichiki Nr. ' + n + ' notiert!'; },
-      error: 'Etwas ist schiefgelaufen.',
+      undoDone: 'Einen zurückgenommen.',
+      eatDone: function (n) { return 'Famichiki Nr. ' + n + ' notiert.'; },
+      budgetFailed: 'Gezählt, aber nicht in die Reisekasse gebucht — prüfe das Costs-Addon und deine Budget-Rechte.',
+      error: 'Etwas ist schiefgelaufen. Bitte nochmal.',
+      offline: 'Keine Antwort von TREK. Bitte nochmal.',
+      none: 'Heute noch keine',
+      today: function (n, met) {
+        return '<b' + (met ? ' class="met"' : '') + '>' + n + '</b> heute';
+      },
+      streak: function (n) { return n + ' Tage in Folge'; },
+      never: 'Noch nichts gezählt',
+      onTrip: function (n, title) { return n + ' davon auf ' + title; },
+      live: function (s) {
+        var t = s.total + ' Famichiki insgesamt, ' + s.today + ' heute.';
+        if (s.goal && s.today >= s.goal) t += ' Tagesziel erreicht.';
+        if (s.trip && s.trip.title && s.trip.count > 0) {
+          t += ' ' + s.trip.count + ' auf ' + s.trip.title + '.';
+        }
+        return t;
+      },
       last: function (mins) {
         if (mins < 1) return 'zuletzt gerade eben';
         if (mins < 60) return 'zuletzt vor ' + mins + ' Min';
@@ -253,35 +362,108 @@
     },
   };
   var L = STR.en;
-  var lastState = null;
 
-  // ---- theme (robust: TREK may deliver theme under different keys, or — as in
-  // some 3.2.x builds — send locale but not theme; fall back to the OS scheme) --
+  // ---- the user's own calendar day -----------------------------------------
+  // "Today" has to mean the user's local day, not the UTC one: at 08:00 in Japan it is
+  // still yesterday in UTC, so a UTC day would mis-file a third of every Japanese day.
+  // trek:context carries the user's IANA zone in formats.timezone.
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function localToday() {
+    if (timezone) {
+      try {
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+      } catch (e) { /* unknown zone — fall through to the browser's own */ }
+    }
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function shiftDay(iso, delta) {
+    var p = iso.split('-');
+    var t = Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) + delta * 86400000;
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
+  // ---- postMessage bridge ---------------------------------------------------
+  function post(msg) { window.parent.postMessage(msg, '*'); }
+
+  function invoke(sub, method, body) {
+    return new Promise(function (resolve, reject) {
+      var requestId = 'r' + (++seq);
+      // Without a timeout a lost answer leaks the pending entry and, worse, leaves the
+      // button disabled forever — the failure mode was a permanently dead widget.
+      var timer = setTimeout(function () {
+        delete pending[requestId];
+        reject(new Error('timeout'));
+      }, INVOKE_TIMEOUT);
+      pending[requestId] = { resolve: resolve, reject: reject, timer: timer };
+      post({ type: 'trek:invoke', requestId: requestId, sub: sub, method: method, body: body });
+    });
+  }
+
+  function settle(requestId, fn, arg) {
+    var entry = pending[requestId];
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    delete pending[requestId];
+    entry[fn](arg);
+  }
+
+  function notify(level, message) {
+    post({ type: 'trek:notify', level: level, message: message });
+  }
+
+  // Reset is confirmed by TREK's own dialog, and only by it. There is deliberately NO
+  // timeout fallback: a fallback that arms a one-tap reset while the host dialog is still
+  // open would let a "Cancel" tap be discarded and the very next tap wipe the tally. If the
+  // host never answers, nothing happens — a reset that doesn't run is harmless, one that
+  // runs against the user's answer is not.
+  function askConfirm() {
+    return new Promise(function (resolve) {
+      var requestId = 'c' + (++seq);
+      confirms[requestId] = function (value) {
+        delete confirms[requestId];
+        resolve(value);
+      };
+      post({
+        type: 'trek:confirm', requestId: requestId,
+        title: L.resetTitle, message: L.resetMsg,
+        confirmLabel: L.resetYes, cancelLabel: L.cancel, danger: true,
+      });
+    });
+  }
+
+  var lastH = -1;
+  function resize() {
+    var h = Math.ceil(el('card').getBoundingClientRect().height) + 2;
+    if (h !== lastH) { lastH = h; post({ type: 'trek:resize', height: h }); }
+  }
+
+  // ---- context --------------------------------------------------------------
   var hostThemeExplicit = false;
   var contextReceived = false;
-  function resolveTheme(m) {
-    var cands = [m.theme, m.colorScheme, m.color_scheme, m.appearance, m.mode];
-    for (var i = 0; i < cands.length; i++) {
-      var t = cands[i];
-      if (t === true) { hostThemeExplicit = true; return 'dark'; }
-      if (typeof t === 'string') {
-        t = t.trim().toLowerCase();
-        if (t === 'dark') { hostThemeExplicit = true; return 'dark'; }
-        if (t === 'light') { hostThemeExplicit = true; return 'light'; }
-        // 'system' / 'auto' → fall through to the OS preference
-      }
-    }
-    if (m.dark === true || m.darkMode === true) { hostThemeExplicit = true; return 'dark'; }
-    hostThemeExplicit = false;
-    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-  }
-  // Set on <html> (documentElement) — see the CSS note: color-scheme must live on
-  // the root or the sandbox canvas stays opaque-white behind the transparent widget.
-  function applyTheme(t) { document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light'; }
 
-  // TREK also sends `tokens` (the host's resolved palette) in trek:context. Applying
-  // them as inline vars on :root makes the widget match TREK EXACTLY (incl. accent)
-  // and re-match on toggle, since inline vars win over our hardcoded fallback.
+  function resolveTheme(m) {
+    var t = m.theme;
+    if (typeof t === 'string') {
+      t = t.trim().toLowerCase();
+      if (t === 'dark') { hostThemeExplicit = true; return 'dark'; }
+      if (t === 'light') { hostThemeExplicit = true; return 'light'; }
+    }
+    hostThemeExplicit = false;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ? 'dark' : 'light';
+  }
+
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light';
+  }
+
+  // TREK sends `tokens` (the host's resolved palette, including the real user accent).
+  // Applying them as inline vars on :root makes the widget match TREK exactly.
   function applyTokens(tokens) {
     if (!tokens || typeof tokens !== 'object') return;
     var root = document.documentElement.style;
@@ -293,66 +475,136 @@
     }
   }
 
-  function applyLang(locale) {
-    L = (locale && String(locale).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
-    document.documentElement.lang = (L === STR.de) ? 'de' : 'en';
+  function applyLang(next) {
+    L = (next && String(next).toLowerCase().indexOf('de') === 0) ? STR.de : STR.en;
+    locale = (L === STR.de) ? 'de' : 'en';
+    document.documentElement.lang = locale;
     el('kicker').textContent = L.kicker;
     el('eat').textContent = L.eat;
-    if (!armed) el('reset').textContent = L.reset;
+    el('undo').textContent = L.undo;
+    el('reset').textContent = L.reset;
     if (lastState) render(lastState); else el('sub').textContent = L.loading;
-  }
-
-  // ---- postMessage bridge ---------------------------------------------------
-  function post(msg) { window.parent.postMessage(msg, '*'); }
-
-  function invoke(sub, method, body) {
-    return new Promise(function (resolve, reject) {
-      var requestId = 'r' + (++seq);
-      pending[requestId] = { resolve: resolve, reject: reject };
-      post({ type: 'trek:invoke', requestId: requestId, sub: sub, method: method, body: body });
-    });
-  }
-
-  function notify(level, message) { post({ type: 'trek:notify', level: level, message: message }); }
-
-  var lastH = -1;
-  function resize() {
-    var h = Math.ceil(el('card').getBoundingClientRect().height) + 2;
-    if (h !== lastH) { lastH = h; post({ type: 'trek:resize', height: h }); }
   }
 
   window.addEventListener('message', function (e) {
     var m = e.data;
     if (!m || typeof m.type !== 'string') return;
+
     if (m.type === 'trek:context') {
+      var wasReady = contextReceived;
       contextReceived = true;
-      applyTokens(m.tokens);            // exact TREK palette (incl. accent), if provided
-      applyTheme(resolveTheme(m));      // m.theme is the source of truth; sets <html> + color-scheme
+      applyTokens(m.tokens);
+      applyTheme(resolveTheme(m));
+      // The host mirrors writing direction into the frame; a hand-rolled UI has to apply it.
+      if (m.dir === 'rtl' || m.dir === 'ltr') document.documentElement.dir = m.dir;
+
+      var tzNext = m.formats && m.formats.timezone;
+      var tzChanged = typeof tzNext === 'string' && tzNext !== timezone;
+      if (tzChanged) timezone = tzNext;
       applyLang(m.locale);
+      // Context is re-sent on every theme toggle; only refetch when something that
+      // actually changes the numbers moved.
+      if (!wasReady || tzChanged) refresh();
       resize();
       return;
     }
-    // Some hosts push theme changes separately — honor them if they arrive.
-    if (m.type === 'trek:theme' || m.type === 'trek:themechange' || m.type === 'trek:theme-change') {
-      applyTheme(resolveTheme(m));
+    if (m.type === 'trek:response') { settle(m.requestId, 'resolve', m.data); return; }
+    if (m.type === 'trek:error') {
+      settle(m.requestId, 'reject', new Error(m.code === 401 ? 'auth' : 'host'));
       return;
     }
-    if (m.type === 'trek:response' && pending[m.requestId]) {
-      pending[m.requestId].resolve(m.data); delete pending[m.requestId]; return;
-    }
-    if (m.type === 'trek:error' && pending[m.requestId]) {
-      pending[m.requestId].reject(new Error(m.message || ('Error ' + m.code)));
-      delete pending[m.requestId]; return;
+    if (m.type === 'trek:confirm:result' && confirms[m.requestId]) {
+      confirms[m.requestId](m.confirmed === true);
+      return;
     }
   });
 
   // ---- rendering ------------------------------------------------------------
+  function money(n, currency) {
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency', currency: currency, maximumFractionDigits: 0,
+      }).format(n);
+    } catch (e) { return n + ' ' + currency; }
+  }
+
+  function minutesSince(iso) {
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return null;
+    return Math.max(0, Math.round((Date.now() - t) / 60000));
+  }
+
+  function renderSpark(state, today) {
+    var host = el('spark');
+    if (!state.total) { host.hidden = true; return; }
+    var byDate = {};
+    for (var i = 0; i < state.history.length; i++) {
+      byDate[state.history[i].date] = state.history[i].count;
+    }
+    var peak = Math.max(1, state.bestDay);
+    var html = '';
+    for (var d = 6; d >= 0; d--) {
+      var day = shiftDay(today, -d);
+      var n = byDate[day] || 0;
+      var pct = n ? Math.max(18, Math.round((n / peak) * 100)) : 0;
+      html += '<i class="' + (n ? (d === 0 ? 'on today' : 'on') : '') + '"' +
+              ' style="height:' + (n ? pct : 12) + '%"></i>';
+    }
+    host.innerHTML = html;
+    host.hidden = false;
+  }
+
   function render(state, opts) {
     lastState = state;
+    var today = localToday();
+
     el('count').textContent = state.total;
-    el('sub').innerHTML = state.today > 0 ? L.today(state.today) : L.none;
+
+    // Two segments at most. The card is narrow, and the trip's own tally already has a
+    // better home: the badge this plugin puts on the dashboard trip card.
+    var parts = [];
+    if (state.today > 0) {
+      var met = state.goal && state.today >= state.goal;
+      parts.push(L.today(state.today, met));
+    } else if (state.total > 0) {
+      parts.push(L.none);
+    } else {
+      parts.push(L.never);
+    }
+    if (state.total > 0 && state.spent > 0) {
+      parts.push(money(state.spent, state.currency));
+    } else if (state.today === 0 && state.lastEatenAt) {
+      var mins = minutesSince(state.lastEatenAt);
+      if (mins !== null) parts.push(L.last(mins));
+    }
+    el('sub').innerHTML = parts.join(' · ');
+
+    var onTrip = state.trip && state.trip.title && state.trip.count > 0;
+    el('count').title = onTrip
+      ? L.onTrip(state.trip.count, state.trip.title) : '';
+
+    var streakEl = el('streak');
+    if (state.streak >= 2) {
+      streakEl.textContent = L.streak(state.streak);
+      streakEl.hidden = false;
+    } else {
+      streakEl.hidden = true;
+    }
+
+    renderSpark(state, today);
+    el('undo').hidden = state.total === 0;
     el('reset').hidden = state.total === 0;
     el('error').textContent = '';
+
+    // Writing textContent replaces the text node, which an aria-live region treats as a
+    // change and re-announces. The 60s poll would otherwise read the same sentence to a
+    // screen reader once a minute forever, so only speak when it actually differs.
+    var spoken = L.live(state);
+    if (spoken !== spokenState) {
+      spokenState = spoken;
+      el('live').textContent = spoken;
+    }
+
     if (opts && opts.pop) {
       var a = el('art');
       a.classList.remove('pop'); void a.offsetWidth; a.classList.add('pop');
@@ -360,47 +612,83 @@
     resize();
   }
 
+  // Never render a raw host/DB message — those are internal and leak implementation detail.
   function showError(err) {
-    el('error').textContent = (err && err.message) ? err.message : L.error;
+    el('error').textContent =
+      (err && err.message === 'timeout') ? L.offline : L.error;
     resize();
   }
 
+  function apply(state, mySeq, opts) {
+    if (mySeq < renderedSeq) return;   // a newer answer already won
+    renderedSeq = mySeq;
+    render(state, opts);
+  }
+
   // ---- actions --------------------------------------------------------------
+  function refresh() {
+    var mySeq = ++seq;
+    return invoke('/state?d=' + localToday(), 'GET')
+      .then(function (state) {
+        el('eat').disabled = false;
+        apply(state, mySeq);
+      })
+      .catch(function (err) {
+        el('eat').disabled = false;
+        if (!lastState) el('sub').textContent = '';
+        showError(err);
+      });
+  }
+
   var eatBtn = el('eat');
   eatBtn.addEventListener('click', function () {
     eatBtn.disabled = true;
-    invoke('/eat', 'POST').then(function (state) {
-      render(state, { pop: true });
-      notify('success', L.eatDone(state.total));
+    var mySeq = ++seq;
+    invoke('/eat', 'POST', { localDate: localToday() }).then(function (state) {
+      apply(state, mySeq, { pop: true });
+      // Budget logging is opt-in, so silently dropping it would leave someone who turned it
+      // on believing it works. It fails for reasons the user can act on: the Costs addon is
+      // off, or they lack budget-edit rights on the trip.
+      if (state.budget === 'failed') notify('warning', L.budgetFailed);
+      else notify('success', L.eatDone(state.total));
     }).catch(showError).then(function () { eatBtn.disabled = false; });
   });
 
-  // Two-tap reset so a stray click doesn't wipe the tally.
+  var undoBtn = el('undo');
+  undoBtn.addEventListener('click', function () {
+    undoBtn.disabled = true;
+    var mySeq = ++seq;
+    invoke('/undo', 'POST', { localDate: localToday() }).then(function (state) {
+      apply(state, mySeq);
+      notify('info', L.undoDone);
+    }).catch(showError).then(function () { undoBtn.disabled = false; });
+  });
+
   var resetBtn = el('reset');
-  var armed = false, armTimer = null;
-  function disarm() { armed = false; resetBtn.textContent = L.reset; resetBtn.classList.remove('armed'); }
-  resetBtn.addEventListener('click', function () {
-    if (!armed) {
-      armed = true;
-      resetBtn.textContent = L.resetArm;
-      resetBtn.classList.add('armed');
-      armTimer = setTimeout(disarm, 2500);
-      return;
-    }
-    clearTimeout(armTimer); disarm();
-    invoke('/reset', 'POST').then(function (state) {
-      render(state); notify('info', L.resetDone);
+
+  function doReset() {
+    var mySeq = ++seq;
+    invoke('/reset', 'POST', { localDate: localToday() }).then(function (state) {
+      apply(state, mySeq);
+      notify('info', L.resetDone);
+      el('eat').focus();          // the reset link just vanished; don't drop focus to nowhere
     }).catch(showError);
+  }
+
+  resetBtn.addEventListener('click', function () {
+    if (resetPending) return;                     // a dialog is already open for this
+    resetPending = true;
+    askConfirm().then(function (confirmed) {
+      resetPending = false;
+      if (confirmed === true) doReset();
+    });
   });
 
   // ---- boot -----------------------------------------------------------------
-  // Re-report height on ANY content/layout change (text wrap, state load, font
-  // metrics) so the host card never clips the button.
+  // Re-report height on any content/layout change so the host card never clips the button.
   if (window.ResizeObserver) {
     new ResizeObserver(function () { resize(); }).observe(el('card'));
   }
-  // When we're following the OS scheme (host sent no explicit theme), react to
-  // the user flipping their OS/browser dark mode.
   if (window.matchMedia) {
     var mq = window.matchMedia('(prefers-color-scheme: dark)');
     var onScheme = function () { if (!hostThemeExplicit) applyTheme(resolveTheme({})); };
@@ -408,11 +696,19 @@
     else if (mq.addListener) mq.addListener(onScheme);
   }
 
-  // Announce readiness, then re-request context a few times. TREK sends the context
-  // (incl. theme + tokens) on trek:ready OR trek:context:request, but the trek:ready
-  // handshake is racy: if we announce before the host's listener attaches, we'd never
-  // learn the theme and fall back to the OS scheme (dark mode looking "off"). Retrying
-  // trek:context:request until it arrives closes that race.
+  // A dashboard sidebar widget has no tripId, so TREK never routes trek:event to it —
+  // polling is the only way to notice a Famichiki counted on another device, or the day
+  // rolling over past local midnight.
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(function () {
+      if (!document.hidden) refresh();
+    }, POLL_MS);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) refresh();
+  });
+
   post({ type: 'trek:ready' });
   (function requestContext(attempt) {
     if (contextReceived || attempt > 6) return;
@@ -420,11 +716,8 @@
     setTimeout(function () { requestContext(attempt + 1); }, 80 + attempt * 160);
   })(0);
 
-  invoke('/state', 'GET').then(function (state) {
-    eatBtn.disabled = false; render(state);
-  }).catch(function (err) {
-    eatBtn.disabled = false; el('sub').textContent = ''; showError(err);
-  });
+  refresh();
+  startPolling();
 })();
 </script>
 </body>

@@ -1,5 +1,41 @@
-{
+﻿{
+  "actingUserId": 1,
   "config": {},
-  "trips": {},
-  "users": {}
+  "budgetAddonEnabled": true,
+  "userSettings": {
+    "daily_goal": "3",
+    "price_per_piece": "198",
+    "currency": "JPY",
+    "milestone_alerts": "on",
+    "budget_logging": "on"
+  },
+  "trips": {
+    "1": {
+      "members": [1],
+      "canEditCosts": true,
+      "data": {
+        "id": 1,
+        "title": "Japan 2026",
+        "start_date": "2026-08-20",
+        "end_date": "2026-09-10",
+        "currency": "JPY"
+      },
+      "costs": []
+    },
+    "2": {
+      "members": [1],
+      "data": {
+        "id": 2,
+        "title": "Osaka 2025",
+        "start_date": "2025-03-01",
+        "end_date": "2025-03-14"
+      }
+    }
+  },
+  "users": {
+    "1": { "id": 1, "username": "fbnlrz", "display_name": "Fabian" }
+  }
 }
+
+
+

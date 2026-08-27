@@ -1,2 +1,14 @@
-# Keep shell scripts LF so they run under bash/Git Bash on Windows too.
-*.sh text eol=lf
+# Reproducible plugin.zip — `pack` hashes the working tree, so line-ending drift
+# (Windows core.autocrlf) makes the same commit produce a different sha256/size,
+# and the registry pins the exact hash of the uploaded artifact.
+# Normalise text to LF; keep binaries untouched.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.woff binary
+*.woff2 binary

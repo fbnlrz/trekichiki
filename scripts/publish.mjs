@@ -3,8 +3,17 @@
  * Cross-platform one-command release for the Famichiki Counter TREK plugin.
  * Works on Windows (PowerShell/CMD), macOS and Linux — no bash required.
  *
- *   npm run release            # pack -> tag -> GitHub release -> preflight -> registry PR
- *   npm run release -- --sign  # same, but sign the artifact (recommended)
+ *   npm run release            # check -> pack -> tag + GitHub release -> preflight -> registry PR
+ *   npm run release -- --sign  # same, but sign the artifact
+ *
+ * A failed check (step 1) releases nothing at all; a failure in preflight or the
+ * PR step rolls back the release and tags this run created, so you fix and re-run
+ * against the same version.
+ *
+ * Signing: this wrapper runs the SDK with inherited stdio, so `publish` is
+ * interactive and OFFERS to sign, creating the key for you — `--sign` is only
+ * needed non-interactively (CI). The first signed release also retro-signs the
+ * already-published unsigned versions.
  *
  * The git tag is derived from "version" in trek-plugin.json, so tag == version
  * is guaranteed. Run from the repo root, on a clean, pushed commit.
