@@ -1,15 +1,18 @@
 {
   "name": "trekichiki",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
     "dev": "npx -y trek-plugin-sdk dev",
+    "status": "npx -y trek-plugin-sdk status .",
     "validate": "npx -y trek-plugin-sdk validate .",
+    "shot": "npx -y trek-plugin-sdk shot .",
     "pack": "npx -y trek-plugin-sdk pack .",
     "release": "node scripts/publish.mjs"
   },
   "devDependencies": {
-    "trek-plugin-sdk": "^1.2.1"
+    "playwright": "^1.62.1",
+    "trek-plugin-sdk": "^1.5.0"
   }
 }
