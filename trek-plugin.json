@@ -1,7 +1,7 @@
 {
   "id": "trekichiki",
   "name": "Famichiki Counter",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "apiVersion": 1,
   "author": "fbnlrz",
   "description": "Tally every Famichiki you eat on your trip — FamilyMart Japan's legendary fried-chicken snack, counted right on your dashboard.",
@@ -9,27 +9,16 @@
   "license": "MIT",
   "icon": "Drumstick",
   "type": "widget",
-  "trek": ">=3.2.0 <4.0.0",
+  "trek": ">=4.0.0 <5.0.0",
   "nativeModules": false,
   "permissions": [
-    "db:own"
-  ],
-  "routes": [
-    {
-      "method": "GET",
-      "path": "/state",
-      "auth": true
-    },
-    {
-      "method": "POST",
-      "path": "/eat",
-      "auth": true
-    },
-    {
-      "method": "POST",
-      "path": "/reset",
-      "auth": true
-    }
+    "db:own",
+    "db:read:trips",
+    "db:write:costs",
+    "notify:send",
+    "hook:trip-card-provider",
+    "hook:pdf-section-provider",
+    "hook:user-data"
   ],
   "capabilities": {
     "widget": {
@@ -37,5 +26,58 @@
       "slot": "sidebar",
       "defaultSize": "medium"
     }
-  }
+  },
+  "settings": [
+    {
+      "key": "daily_goal",
+      "label": "Daily goal",
+      "input_type": "text",
+      "scope": "user",
+      "required": false,
+      "placeholder": "0",
+      "hint": "How many Famichiki a day you are aiming for. 0 turns the goal off."
+    },
+    {
+      "key": "milestone_alerts",
+      "input_type": "select",
+      "label": "Milestone notifications",
+      "scope": "user",
+      "required": false,
+      "hint": "Send a TREK notification when you hit 10, 25, 50, 100, 250 or 500 Famichiki.",
+      "options": [
+        { "value": "on", "label": "On" },
+        { "value": "off", "label": "Off" }
+      ]
+    },
+    {
+      "key": "budget_logging",
+      "input_type": "select",
+      "label": "Log to trip budget",
+      "scope": "user",
+      "required": false,
+      "hint": "Book every Famichiki as a budget item on the trip that is running. Needs the Costs addon and budget edit rights.",
+      "options": [
+        { "value": "off", "label": "Off" },
+        { "value": "on", "label": "On" }
+      ]
+    },
+    {
+      "key": "price_per_piece",
+      "label": "Price per Famichiki",
+      "input_type": "text",
+      "scope": "user",
+      "required": false,
+      "placeholder": "198",
+      "hint": "Used for the running total and for budget items. FamilyMart charged around 198 yen at the time of writing."
+    },
+    {
+      "key": "currency",
+      "label": "Currency",
+      "input_type": "text",
+      "scope": "user",
+      "required": false,
+      "placeholder": "JPY",
+      "hint": "Three-letter code for the price above."
+    }
+  ]
 }
